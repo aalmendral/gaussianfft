@@ -6,8 +6,8 @@ import gaussianfft
 
 
 class SimpleKriging:
-    def __init__(self, variogram, nx, dx, obs_locations, obs_values, obs_uncertainties,
-                 ny=1, dy=1.0, nz=1, dz=1.0, mean=0.0):
+    def __init__(self, variogram, nx, dx, ny, dy, nz, dz,
+                 obs_locations, obs_values, obs_uncertainties, *, mean=0.0):
         self.variogram = variogram
         self.nx = nx
         self.dx = dx
