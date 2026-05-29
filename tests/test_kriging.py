@@ -27,34 +27,35 @@ class TestSimpleKriging1D:
             idx = int(round(loc[0] / self.dx))
             assert abs(mean_field[idx] - val) < 1e-6
 
-    def test_variance_zero_at_obs_no_uncertainty(self):
+    def test_stdev_near_zero_at_obs_no_uncertainty(self):
         obs_locations = np.array([[50.0], [100.0], [150.0]])
         obs_values = np.array([1.0, -0.5, 0.8])
         obs_uncertainties = np.array([0.0, 0.0, 0.0])
 
-        _, variance_field = predict(
+        _, stdev_field = predict(
             self.variogram, self.nx, self.dx,
             obs_locations, obs_values, obs_uncertainties,
         )
 
         for loc in obs_locations:
             idx = int(round(loc[0] / self.dx))
-            assert variance_field[idx] < 1e-6
+            # Numerical jitter in covariance regularization is 1e-10, so stdev is ~1e-5.
+            assert stdev_field[idx] < 2e-5
 
-    def test_variance_increases_away_from_obs(self):
+    def test_stdev_increases_away_from_obs(self):
         obs_locations = np.array([[100.0]])
         obs_values = np.array([1.0])
         obs_uncertainties = np.array([0.0])
 
-        _, variance_field = predict(
+        _, stdev_field = predict(
             self.variogram, self.nx, self.dx,
             obs_locations, obs_values, obs_uncertainties,
         )
 
         idx_obs = int(round(100.0 / self.dx))
-        # Variance should be larger far from the observation
-        assert variance_field[0] > variance_field[idx_obs]
-        assert variance_field[-1] > variance_field[idx_obs]
+        # Stdev should be larger far from the observation.
+        assert stdev_field[0] > stdev_field[idx_obs]
+        assert stdev_field[-1] > stdev_field[idx_obs]
 
     def test_nonzero_uncertainty_smooths_estimate(self):
         obs_locations = np.array([[50.0], [100.0]])
@@ -116,13 +117,13 @@ class TestSimpleKriging1D:
             assert abs(sim[idx0] - 1.0) < 1e-4
             assert abs(sim[idx1] - (-0.5)) < 1e-4
 
-    def test_conditional_simulation_variance(self):
+    def test_conditional_simulation_stdev(self):
         grf.seed(123)
         obs_locations = np.array([[100.0]])
         obs_values = np.array([0.0])
         obs_uncertainties = np.array([0.0])
 
-        kriging_mean, kriging_var = predict(
+        _, kriging_std = predict(
             self.variogram, self.nx, self.dx,
             obs_locations, obs_values, obs_uncertainties,
         )
@@ -137,9 +138,11 @@ class TestSimpleKriging1D:
         sim_stack = np.array(sims)
         empirical_var = np.var(sim_stack, axis=0)
 
-        # Empirical variance should approximate kriging variance
+        empirical_std = np.sqrt(empirical_var)
+
+        # Empirical std should approximate kriging std
         # (statistical test, use generous tolerance)
-        rel_error = np.abs(empirical_var - kriging_var) / np.maximum(kriging_var, 0.01)
+        rel_error = np.abs(empirical_std - kriging_std) / np.maximum(kriging_std, 0.1)
         # Most points should have reasonable agreement
         assert np.median(rel_error) < 0.5
 
@@ -171,12 +174,12 @@ class TestSimpleKriging2D:
             iy = int(round(loc[1] / self.dy))
             assert abs(mean_field[ix, iy] - val) < 1e-6
 
-    def test_variance_at_obs(self):
+    def test_stdev_at_obs(self):
         obs_locations = np.array([[25.0, 25.0]])
         obs_values = np.array([1.0])
         obs_uncertainties = np.array([0.0])
 
-        _, variance_field = predict(
+        _, stdev_field = predict(
             self.variogram, self.nx, self.dx,
             obs_locations, obs_values, obs_uncertainties,
             ny=self.ny, dy=self.dy,
@@ -184,9 +187,9 @@ class TestSimpleKriging2D:
 
         ix = int(round(25.0 / self.dx))
         iy = int(round(25.0 / self.dy))
-        assert variance_field[ix, iy] < 1e-6
-        # Corner should have higher variance
-        assert variance_field[0, 0] > variance_field[ix, iy]
+        assert stdev_field[ix, iy] < 2e-5
+        # Corner should have higher stdev
+        assert stdev_field[0, 0] > stdev_field[ix, iy]
 
 
 class TestSimpleKriging3D:
