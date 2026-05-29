@@ -33,6 +33,9 @@ cond_2 = grf.conditional_simulate(variogram, nx, dx, ny, dy, obs_pt, obs_val, ob
 # Predict using the unconditional simulation as mean — equivalent to conditional_simulate(seed=42)
 pred_with_uncond, variance_field = grf.predict(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d)
 
+# Predict with zero mean
+pred_zero_mean, variance_zero_mean = grf.predict(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=0.0)
+
 # Plot
 fig = plt.figure(figsize=(10, 12))
 gs = fig.add_gridspec(3, 2, height_ratios=[1, 1, 0.8])
@@ -42,18 +45,22 @@ ax_cs = fig.add_subplot(gs[2, :])
 vmin, vmax = -3, 3
 extent = [0, nx * dx, 0, ny * dy]
 
-# Cross-section along the domain diagonal (upper-left to lower-right)
-p0 = np.array([0.0, (ny - 1) * dy])
-p1 = np.array([(nx - 1) * dx, 0.0])
+# Cross-section along line through observations, extended 200m in both directions
+p0_obs = obs_pt[0]
+p1_obs = obs_pt[1]
+obs_direction = p1_obs - p0_obs
+obs_dist = np.linalg.norm(obs_direction)
+obs_direction_unit = obs_direction / obs_dist
+p0 = p0_obs - 200.0 * obs_direction_unit
+p1 = p1_obs + 200.0 * obs_direction_unit
 s = np.linspace(0.0, 1.0, 400)
 line_x = p0[0] + s * (p1[0] - p0[0])
 line_y = p0[1] + s * (p1[1] - p0[1])
 arclen = np.hypot(p1[0] - p0[0], p1[1] - p0[1])
 dist = s * arclen
 
-# Project observations onto diagonal to indicate their relative locations along the section.
-diag_dir = (p1 - p0) / arclen
-obs_proj_dist = np.clip((obs_pt - p0) @ diag_dir, 0.0, arclen)
+# Observation positions along the extended line
+obs_proj_dist = np.array([200.0, 200.0 + obs_dist])
 
 
 def bilinear_sample(field, xs, ys):
@@ -96,17 +103,23 @@ fig.colorbar(im, ax=ax)
 # Cross-section panel
 pred_cs = bilinear_sample(pred_with_uncond, line_x, line_y)
 std_cs = np.sqrt(bilinear_sample(variance_field, line_x, line_y))
-ax_cs.fill_between(dist, pred_cs - std_cs, pred_cs + std_cs, alpha=0.3, label='±1 std dev', color='C3')
+pred_zero_cs = bilinear_sample(pred_zero_mean, line_x, line_y)
+std_zero_cs = np.sqrt(bilinear_sample(variance_zero_mean, line_x, line_y))
+ax_cs.fill_between(dist, pred_zero_cs - std_zero_cs, pred_zero_cs + std_zero_cs, alpha=0.2, color='C2', label='±1 std dev (mean=0)')
 ax_cs.plot(dist, bilinear_sample(uncond_2d, line_x, line_y), label='Unconditional (seed=42)', lw=1.2)
 ax_cs.plot(dist, bilinear_sample(cond, line_x, line_y), label='Conditional (seed=42)', lw=1.5)
 ax_cs.plot(dist, bilinear_sample(cond_2, line_x, line_y), label='Conditional (seed=123)', lw=1.5)
-ax_cs.plot(dist, pred_cs, label='Predict(mean=unconditional)', lw=1.5, ls='--', color='C3')
+ax_cs.plot(dist, pred_zero_cs, label='Predict(mean=0)', lw=1.5, ls='--', color='C2')
+# Plot observations with their kriging variance (measurement uncertainty)
 for i, sx in enumerate(obs_proj_dist):
-    ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.5)
-    ax_cs.annotate(f' obs#{i + 1} proj', (sx, ax_cs.get_ylim()[0]), textcoords='offset points', xytext=(4, 4))
+    ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.3)
+    obs_std = obs_unc[i]
+    ax_cs.plot(sx, obs_val[i], 'ro', markersize=7, zorder=5, label='Observation' if i == 0 else '')
+    if obs_std > 0:
+        ax_cs.errorbar(sx, obs_val[i], yerr=obs_std, fmt='none', ecolor='r', capsize=4, capthick=1.5, zorder=5)
 ax_cs.set_xlabel('arc length along diagonal cross-section')
 ax_cs.set_ylabel('value')
-ax_cs.set_title('Diagonal cross-section (upper-left to lower-right)')
+ax_cs.set_title('Cross-section through observations')
 ax_cs.legend(loc='best')
 ax_cs.grid(True, alpha=0.3)
 
