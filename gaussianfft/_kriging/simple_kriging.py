@@ -71,7 +71,16 @@ class SimpleKriging:
                 cov[i, j] = c
                 cov[j, i] = c
         cov[np.diag_indices(n)] += self.obs_uncertainties ** 2 + 1e-10
-        return scipy.linalg.cho_factor(cov)
+        try:
+            return scipy.linalg.cho_factor(cov)
+        except scipy.linalg.LinAlgError as exc:
+            raise ValueError(
+                "Failed to factorize observation covariance matrix. "
+                "The matrix is likely not positive definite. This can happen for "
+                "nearly duplicate observation locations with too small observation "
+                "uncertainties. Consider increasing obs_uncertainties or removing "
+                "duplicate/near-duplicate observations."
+            ) from exc
 
     def _build_grid_to_obs_covariance(self):
         grid_coords = self._grid_coordinates()
