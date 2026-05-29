@@ -9,7 +9,7 @@ from scipy.ndimage import map_coordinates
 import gaussianfft as grf
 
 
-def bilinear_sample(field, xs, ys, dx, dy):
+def bilinear_interpolate(field, xs, ys, dx, dy):
     return map_coordinates(field, [xs / dx, ys / dy], order=1, mode='nearest')
 
 
@@ -50,7 +50,7 @@ def main():
         variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=0.0
     )
 
-    # Cross-section through observations, extended 200 m on each side.
+    # Cross-section through observations
     p0_obs = obs_pt[0]
     p1_obs = obs_pt[1]
     obs_direction = p1_obs - p0_obs
@@ -81,12 +81,12 @@ def main():
     vmin, vmax = -3, 3
     extent = [0, nx * dx, 0, ny * dy]
     map_fields = [
-        (uncond_2d, 'Unconditional (seed=42)'),
-        (cond_seed_42, 'Conditional (seed=42)'),
-        (avg_cond, f'Mean of {n_realizations} conditional realizations'),
-        (cond_seed_123, 'Conditional (seed=123)'),
-        (pred_with_uncond, 'Predict(mean=unconditional)'),
-        (pred_zero_mean, 'Kriging prediction (mean=0)'),
+        (uncond_2d, 'Unconditional (42)'),
+        (cond_seed_42, 'Conditional (42)'),
+        (avg_cond, f'Mean of {n_realizations} cond sims'),
+        (cond_seed_123, 'Conditional (123)'),
+        (pred_with_uncond, 'Prediction (mean=uncond)'),
+        (pred_zero_mean, 'Prediction (mean=0)'),
     ]
 
     for ax, (field, title) in zip(map_axes, map_fields):
@@ -96,34 +96,35 @@ def main():
         for i, v in enumerate(obs_val):
             ax.annotate(f'{v:.1f}', obs_pt[i], textcoords='offset points', xytext=(4, 4))
         ax.set_title(title)
+        ax.set_xticks([])
+        ax.set_yticks([])
         fig.colorbar(im, ax=ax)
 
     # Cross-section panel (band shown for mean=0).
-    pred_zero_cs = bilinear_sample(pred_zero_mean, line_x, line_y, dx, dy)
-    std_zero_cs = np.sqrt(bilinear_sample(variance_zero_mean, line_x, line_y, dx, dy))
+    pred_zero_cs = bilinear_interpolate(pred_zero_mean, line_x, line_y, dx, dy)
+    std_zero_cs = np.sqrt(bilinear_interpolate(variance_zero_mean, line_x, line_y, dx, dy))
 
     ax_cs.fill_between(
         dist, pred_zero_cs - std_zero_cs, pred_zero_cs + std_zero_cs,
         alpha=0.2, color='C2', label='+-1 std dev (mean=0)'
     )
-    ax_cs.plot(dist, bilinear_sample(uncond_2d, line_x, line_y, dx, dy), label='Unconditional (seed=42)', lw=1.2)
-    ax_cs.plot(dist, bilinear_sample(cond_seed_42, line_x, line_y, dx, dy), label='Conditional (seed=42)', lw=1.3)
-    ax_cs.plot(dist, bilinear_sample(cond_seed_123, line_x, line_y, dx, dy), label='Conditional (seed=123)', lw=1.3)
+    ax_cs.plot(dist, bilinear_interpolate(uncond_2d, line_x, line_y, dx, dy), label='Unconditional (seed=42)', lw=1.2)
+    ax_cs.plot(dist, bilinear_interpolate(cond_seed_42, line_x, line_y, dx, dy), label='Conditional (seed=42)', lw=1.3)
+    ax_cs.plot(dist, bilinear_interpolate(cond_seed_123, line_x, line_y, dx, dy), label='Conditional (seed=123)', lw=1.3)
     ax_cs.plot(dist, pred_zero_cs, label='Predict(mean=0)', lw=1.5, ls='--', color='C2')
 
     for i, sx in enumerate(obs_proj_dist):
         ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.3)
         obs_std = obs_unc[i]
-        ax_cs.plot(sx, obs_val[i], 'ro', markersize=7, zorder=5, label='Observation' if i == 0 else '')
+        ax_cs.plot(sx, obs_val[i], 'ko', markersize=7, zorder=5, label='Observation' if i == 0 else '')
         if obs_std > 0:
             ax_cs.errorbar(
                 sx, obs_val[i], yerr=obs_std, fmt='none', ecolor='r',
                 capsize=4, capthick=1.5, zorder=5
             )
 
-    ax_cs.set_xlabel('arc length along cross-section through observations')
-    ax_cs.set_ylabel('value')
-    ax_cs.set_title('Cross-section through observations (extended 200 m on each side)')
+    ax_cs.set_xlabel('Distance along section (m)')
+    ax_cs.set_ylabel('Value')
     ax_cs.legend(loc='best', ncol=2)
     ax_cs.grid(True, alpha=0.3)
 
