@@ -34,7 +34,7 @@ classifiers = [
 dependencies = [
     "marimo>=0.17.6",
     "numpy",
-    "scipy>=1.13.1",
+    "scipy>=1.13.1 ; platform_python_implementation != 'PyPy'",
 ]
 
 requires-python = ">=3.9"
@@ -45,7 +45,7 @@ Repository = "https://github.com/equinor/gaussianfft"
 Issues = "https://github.com/equinor/gaussianfft/issues"
 
 [project.optional-dependencies]
-util = ["scipy"]
+util = ["scipy ; platform_python_implementation != 'PyPy'"]
 
 
 [build-system]

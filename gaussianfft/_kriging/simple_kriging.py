@@ -134,8 +134,9 @@ class SimpleKriging:
         kriging_variance = 1.0 - np.sum(self._grid_to_obs_cov * alpha.T, axis=1)
         kriging_variance = np.maximum(kriging_variance, 0.0)
         kriging_variance = kriging_variance.reshape(self._grid_shape)
+        kriging_stdev = np.sqrt(kriging_variance)
 
-        return kriging_mean, kriging_variance
+        return kriging_mean, kriging_stdev
 
     def simulate(self, n_sim=1):
         results = []
