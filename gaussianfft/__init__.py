@@ -61,21 +61,17 @@ def _parse_grid_and_obs(args):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def conditional_simulate(variogram, nx, dx, *args, mean=0.0, n=1, seed=None):
+def conditional_simulate(variogram, nx, dx, *args, mean=0.0, n=1, seed=None, **kwargs):
     if seed is not None:
         _gaussianfft.seed(seed)
     from gaussianfft._kriging import simulate as _kriging_simulate
-    ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args)
     return _kriging_simulate(
-        variogram, nx, dx, ny, dy, nz, dz,
-        obs_locations, obs_values, obs_uncertainties, mean=mean, n=n,
+        variogram, nx, dx, *args, mean=mean, n_sim=n, **kwargs,
     )
 
 
-def predict(variogram, nx, dx, *args, mean=0.0):
+def predict(variogram, nx, dx, *args, mean=0.0, **kwargs):
     from gaussianfft._kriging import predict as _kriging_predict
-    ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args)
     return _kriging_predict(
-        variogram, nx, dx, ny, dy, nz, dz,
-        obs_locations, obs_values, obs_uncertainties, mean=mean,
+        variogram, nx, dx, *args, mean=mean, **kwargs,
     )

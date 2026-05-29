@@ -21,7 +21,7 @@ class SimpleKriging:
         self.obs_values = np.asarray(obs_values, dtype=float)
         self.obs_uncertainties = np.asarray(obs_uncertainties, dtype=float)
 
-        self.n_obs = len(self.obs_values)
+        self.n_obs = len(self.obs_locations)
         self.ndims = 3 if nz > 1 else (2 if ny > 1 else 1)
         self._grid_shape = (nx, ny, nz)[:self.ndims]
 
@@ -32,11 +32,15 @@ class SimpleKriging:
         self._compute_obs_indices()
 
     def _validate_inputs(self):
-        if self.obs_locations.ndim != 2 or self.obs_locations.shape[1] != self.ndims:
+        if self.obs_locations.ndim != 2:
             raise ValueError(
-                f"obs_locations must have shape (N, {self.ndims}), got {self.obs_locations.shape}"
+                f"obs_locations must be a 2D array with shape (N, {self.ndims}), got {self.obs_locations.shape}"
             )
-        n = self.n_obs
+        if self.obs_locations.shape[1] != self.ndims:
+            raise ValueError(
+                f"obs_locations must have {self.ndims} columns, got {self.obs_locations.shape[1]}"
+            )
+        n = self.obs_locations.shape[0]
         if self.obs_values.shape != (n,):
             raise ValueError(f"obs_values must have shape ({n},), got {self.obs_values.shape}")
         if self.obs_uncertainties.shape != (n,):
@@ -124,9 +128,9 @@ class SimpleKriging:
 
         return kriging_mean, kriging_variance
 
-    def simulate(self, n=1):
+    def simulate(self, n_sim=1):
         results = []
-        for _ in range(n):
+        for _ in range(n_sim):
             # Generate unconditional field using gaussianfft
             if self.ndims == 1:
                 uncond = gaussianfft.simulate(self.variogram, self.nx, self.dx)
