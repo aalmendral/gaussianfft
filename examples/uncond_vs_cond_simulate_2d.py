@@ -31,7 +31,7 @@ cond = grf.conditional_simulate(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_
 cond_2 = grf.conditional_simulate(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, n=1, seed=123)[0]
 
 # Predict using the unconditional simulation as mean — equivalent to conditional_simulate(seed=42)
-pred_with_uncond, _ = grf.predict(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d)
+pred_with_uncond, variance_field = grf.predict(variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d)
 
 # Plot
 fig = plt.figure(figsize=(10, 12))
@@ -42,13 +42,18 @@ ax_cs = fig.add_subplot(gs[2, :])
 vmin, vmax = -3, 3
 extent = [0, nx * dx, 0, ny * dy]
 
-# Cross-section line through both observations
-p0, p1 = obs_pt[0], obs_pt[1]
+# Cross-section along the domain diagonal (upper-left to lower-right)
+p0 = np.array([0.0, (ny - 1) * dy])
+p1 = np.array([(nx - 1) * dx, 0.0])
 s = np.linspace(0.0, 1.0, 400)
 line_x = p0[0] + s * (p1[0] - p0[0])
 line_y = p0[1] + s * (p1[1] - p0[1])
 arclen = np.hypot(p1[0] - p0[0], p1[1] - p0[1])
 dist = s * arclen
+
+# Project observations onto diagonal to indicate their relative locations along the section.
+diag_dir = (p1 - p0) / arclen
+obs_proj_dist = np.clip((obs_pt - p0) @ diag_dir, 0.0, arclen)
 
 
 def bilinear_sample(field, xs, ys):
@@ -89,16 +94,19 @@ ax.set_title('Predict(mean=unconditional)')
 fig.colorbar(im, ax=ax)
 
 # Cross-section panel
+pred_cs = bilinear_sample(pred_with_uncond, line_x, line_y)
+std_cs = np.sqrt(bilinear_sample(variance_field, line_x, line_y))
+ax_cs.fill_between(dist, pred_cs - std_cs, pred_cs + std_cs, alpha=0.3, label='±1 std dev', color='C3')
 ax_cs.plot(dist, bilinear_sample(uncond_2d, line_x, line_y), label='Unconditional (seed=42)', lw=1.2)
 ax_cs.plot(dist, bilinear_sample(cond, line_x, line_y), label='Conditional (seed=42)', lw=1.5)
 ax_cs.plot(dist, bilinear_sample(cond_2, line_x, line_y), label='Conditional (seed=123)', lw=1.5)
-for sx, v in zip([0.0, arclen], obs_val):
+ax_cs.plot(dist, pred_cs, label='Predict(mean=unconditional)', lw=1.5, ls='--', color='C3')
+for i, sx in enumerate(obs_proj_dist):
     ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.5)
-    ax_cs.plot(sx, v, 'ko', markersize=8)
-    ax_cs.annotate(f' obs={v:.2f}', (sx, v), textcoords='offset points', xytext=(6, 4))
-ax_cs.set_xlabel('arc length along cross-section')
+    ax_cs.annotate(f' obs#{i + 1} proj', (sx, ax_cs.get_ylim()[0]), textcoords='offset points', xytext=(4, 4))
+ax_cs.set_xlabel('arc length along diagonal cross-section')
 ax_cs.set_ylabel('value')
-ax_cs.set_title(f'Cross-section through observations')
+ax_cs.set_title('Diagonal cross-section (upper-left to lower-right)')
 ax_cs.legend(loc='best')
 ax_cs.grid(True, alpha=0.3)
 

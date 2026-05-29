@@ -25,7 +25,7 @@ realizations = grf.conditional_simulate(
 avg_cond = np.mean(realizations, axis=0)
 
 # Kriging prediction
-prediction, _ = grf.predict(
+prediction, variance_field = grf.predict(
     variogram, nx, dx, ny, dy, obs_locations, obs_values, obs_uncertainties,
 )
 
@@ -34,13 +34,18 @@ def bilinear_sample(field, xs, ys):
     return map_coordinates(field, [xs / dx, ys / dy], order=1, mode='nearest')
 
 
-# Cross-section through both observations
-p0, p1 = obs_locations[0], obs_locations[1]
+# Cross-section along the domain diagonal (upper-left to lower-right)
+p0 = np.array([0.0, (ny - 1) * dy])
+p1 = np.array([(nx - 1) * dx, 0.0])
 s = np.linspace(0.0, 1.0, 400)
 line_x = p0[0] + s * (p1[0] - p0[0])
 line_y = p0[1] + s * (p1[1] - p0[1])
 arclen = np.hypot(p1[0] - p0[0], p1[1] - p0[1])
 dist = s * arclen
+
+# Project observations onto diagonal to indicate their relative locations along the section.
+diag_dir = (p1 - p0) / arclen
+obs_proj_dist = np.clip((obs_locations - p0) @ diag_dir, 0.0, arclen)
 
 # Plot: 1x2 imshows on top, cross-section spanning the bottom
 fig = plt.figure(figsize=(11, 9))
@@ -68,17 +73,19 @@ ax_pred.set_title('Kriging prediction')
 fig.colorbar(im, ax=ax_pred)
 
 # Cross-section panel
+pred_cs = bilinear_sample(prediction, line_x, line_y)
+std_cs = np.sqrt(bilinear_sample(variance_field, line_x, line_y))
+ax_cs.fill_between(dist, pred_cs - std_cs, pred_cs + std_cs, alpha=0.3, label='±1 std dev', color='C1')
 ax_cs.plot(dist, bilinear_sample(avg_cond, line_x, line_y),
            label=f'Mean of {n_realizations} conditional sims', lw=1.5)
-ax_cs.plot(dist, bilinear_sample(prediction, line_x, line_y),
-           label='Kriging prediction', lw=1.5, ls='--')
-for sx, v in zip([0.0, arclen], obs_values):
+ax_cs.plot(dist, pred_cs,
+           label='Kriging prediction', lw=1.5, ls='--', color='C1')
+for i, sx in enumerate(obs_proj_dist):
     ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.5)
-    ax_cs.plot(sx, v, 'ko', markersize=4)
-    ax_cs.annotate(f' obs={v:.2f}', (sx, v), textcoords='offset points', xytext=(6, 4))
-ax_cs.set_xlabel('arc length along cross-section')
+    ax_cs.annotate(f' obs#{i + 1} proj', (sx, ax_cs.get_ylim()[0]), textcoords='offset points', xytext=(4, 4))
+ax_cs.set_xlabel('arc length along diagonal cross-section')
 ax_cs.set_ylabel('value')
-ax_cs.set_title(f'Cross-section through observations  ({tuple(p0)} \u2192 {tuple(p1)})')
+ax_cs.set_title('Diagonal cross-section (upper-left to lower-right)')
 ax_cs.legend(loc='best')
 ax_cs.grid(True, alpha=0.3)
 
