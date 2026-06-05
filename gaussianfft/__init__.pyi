@@ -270,6 +270,7 @@ def conditional_simulate(
         mean: float = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
+        method: str = 'SimpleKriging',
 ) -> list[ndarray]:...
 
 
@@ -287,6 +288,7 @@ def conditional_simulate(
         mean: float = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
+        method: str = 'SimpleKriging',
 ) -> list[ndarray]:...
 
 
@@ -306,6 +308,7 @@ def conditional_simulate(
         mean: float = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
+        method: str = 'SimpleKriging',
 ) -> list[ndarray]:
     """
 Generates conditional Gaussian random field realizations using simple kriging.
@@ -338,5 +341,86 @@ Returns
 out: list of numpy.ndarray
     List of n conditional simulation arrays, each shaped (nx,), (nx, ny),
     or (nx, ny, nz) depending on dimensionality.
+"""
+    ...
+
+
+"""
+gaussianfft.predict
+"""
+
+
+@overload
+def predict(
+        variogram: Variogram,
+        nx: int,
+        dx: float,
+        obs_locations: ndarray,
+        obs_values: ndarray,
+        obs_uncertainties: ndarray,
+        *,
+        mean: float = 0.0,
+        method: str = 'SimpleKriging',
+) -> tuple[ndarray, ndarray]:...
+
+
+@overload
+def predict(
+        variogram: Variogram,
+        nx: int,
+        dx: float,
+        ny: int,
+        dy: float,
+        obs_locations: ndarray,
+        obs_values: ndarray,
+        obs_uncertainties: ndarray,
+        *,
+        mean: float = 0.0,
+        method: str = 'SimpleKriging',
+) -> tuple[ndarray, ndarray]:...
+
+
+@overload
+def predict(
+        variogram: Variogram,
+        nx: int,
+        dx: float,
+        ny: int,
+        dy: float,
+        nz: int,
+        dz: float,
+        obs_locations: ndarray,
+        obs_values: ndarray,
+        obs_uncertainties: ndarray,
+        *,
+        mean: float = 0.0,
+        method: str = 'SimpleKriging',
+) -> tuple[ndarray, ndarray]:
+    """
+Returns the kriging mean and standard deviation over the grid.
+
+Parameters
+----------
+variogram: Variogram
+    An instance of gaussianfft.Variogram.
+nx, ny, nz: int
+    Grid size in x, y, z directions. Only nx is required.
+dx, dy, dz: float
+    Grid resolution in x, y, z directions.
+obs_locations: ndarray
+    Array of shape (N, ndims) with observation coordinates.
+obs_values: ndarray
+    Array of shape (N,) with observed values.
+obs_uncertainties: ndarray
+    Array of shape (N,) with observation uncertainties (standard deviations).
+mean: float, optional
+    Prior mean of the field (SimpleKriging only). Default is 0.0.
+method: str, optional
+    Kriging method. One of 'SimpleKriging' (default) or 'OrdinaryKriging'.
+
+Returns
+-------
+out: tuple of (mean_field, stdev_field)
+    Both arrays shaped (nx,), (nx, ny), or (nx, ny, nz).
 """
     ...

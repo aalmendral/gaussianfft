@@ -1,6 +1,25 @@
-from gaussianfft._kriging.simple_kriging import SimpleKriging
+from gaussianfft._kriging.kriging_toolkit import SimpleKriging, OrdinaryKriging
 
 __all__ = ['predict', 'simulate']
+
+_METHODS = {
+    'SimpleKriging': SimpleKriging,
+    'OrdinaryKriging': OrdinaryKriging,
+}
+
+
+def _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                   obs_locations, obs_values, obs_uncertainties, mean):
+    cls = _METHODS.get(method)
+    if cls is None:
+        raise ValueError(
+            f"Unknown kriging method: {method!r}. Choose from {list(_METHODS)}"
+        )
+    if method == 'SimpleKriging':
+        return cls(variogram, nx, dx, ny, dy, nz, dz,
+                   obs_locations, obs_values, obs_uncertainties, mean=mean)
+    return cls(variogram, nx, dx, ny, dy, nz, dz,
+               obs_locations, obs_values, obs_uncertainties)
 
 
 def _parse_grid_and_obs(args, kwargs):
@@ -47,15 +66,15 @@ def _parse_grid_and_obs(args, kwargs):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def predict(variogram, nx, dx, *args, mean=0.0, **kwargs):
+def predict(variogram, nx, dx, *args, method='SimpleKriging', mean=0.0, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
-    sk = SimpleKriging(variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean=mean)
-    return sk.predict()
+    k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                       obs_locations, obs_values, obs_uncertainties, mean)
+    return k.predict()
 
 
-def simulate(variogram, nx, dx, *args, mean=0.0, n_sim=1, **kwargs):
+def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean=0.0, n_sim=1, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
-    sk = SimpleKriging(variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean=mean)
-    return sk.simulate(n_sim=n_sim)
+    k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                       obs_locations, obs_values, obs_uncertainties, mean)
+    return k.simulate(n_sim=n_sim)
