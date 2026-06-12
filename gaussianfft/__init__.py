@@ -6,7 +6,6 @@ if find_spec("numpy") is None:
 
 import gaussianfft._platform  # noqa: F401  (sets up DLL paths before loading C extension)
 
-import gaussianfft._platform  # noqa: F401  (sets up DLL paths before loading C extension)
 import _gaussianfft
 
 from _gaussianfft import *
@@ -61,17 +60,17 @@ def _parse_grid_and_obs(args):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def conditional_simulate(variogram, nx, dx, *args, mean=0.0, n=1, seed=None, **kwargs):
+def conditional_simulate(variogram, nx, dx, *args, mean=0.0, n=1, seed=None, method='SimpleKriging', **kwargs):
     if seed is not None:
         _gaussianfft.seed(seed)
     from gaussianfft._kriging import simulate as _kriging_simulate
     return _kriging_simulate(
-        variogram, nx, dx, *args, mean=mean, n_sim=n, **kwargs,
+        variogram, nx, dx, *args, mean=mean, n_sim=n, method=method, **kwargs,
     )
 
 
-def predict(variogram, nx, dx, *args, mean=0.0, **kwargs):
+def predict(variogram, nx, dx, *args, mean=0.0, method='SimpleKriging', **kwargs):
     from gaussianfft._kriging import predict as _kriging_predict
     return _kriging_predict(
-        variogram, nx, dx, *args, mean=mean, **kwargs,
+        variogram, nx, dx, *args, mean=mean, method=method, **kwargs,
     )

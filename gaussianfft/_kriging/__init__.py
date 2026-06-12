@@ -1,6 +1,29 @@
-from gaussianfft._kriging.simple_kriging import SimpleKriging
+from typing import Union
+
+from numpy import ndarray
+
+from gaussianfft._kriging.kriging_toolkit import SimpleKriging, OrdinaryKriging
 
 __all__ = ['predict', 'simulate']
+
+_METHODS = {
+    'SimpleKriging': SimpleKriging,
+    'OrdinaryKriging': OrdinaryKriging,
+}
+
+
+def _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                   obs_locations, obs_values, obs_uncertainties, mean):
+    cls = _METHODS.get(method)
+    if cls is None:
+        raise ValueError(
+            f"Unknown kriging method: {method!r}. Choose from {list(_METHODS)}"
+        )
+    if method == 'SimpleKriging':
+        return cls(variogram, nx, dx, ny, dy, nz, dz,
+                   obs_locations, obs_values, obs_uncertainties, mean=mean)
+    return cls(variogram, nx, dx, ny, dy, nz, dz,
+               obs_locations, obs_values, obs_uncertainties)
 
 
 def _parse_grid_and_obs(args, kwargs):
@@ -9,6 +32,9 @@ def _parse_grid_and_obs(args, kwargs):
     dy = kwargs.pop('dy', None)
     nz = kwargs.pop('nz', None)
     dz = kwargs.pop('dz', None)
+    if kwargs:
+        unexpected = next(iter(kwargs))
+        raise TypeError(f"unexpected keyword argument {unexpected!r}")
 
     if ny is not None:
         # Grid dims passed as keyword arguments; all positional args are obs
@@ -25,6 +51,8 @@ def _parse_grid_and_obs(args, kwargs):
             )
         obs_locations, obs_values, obs_uncertainties = args
     else:
+        if dy is not None or nz is not None or dz is not None:
+            raise TypeError("ny must be provided when dy, nz, or dz are given as keyword arguments")
         # All positional
         if len(args) == 3:
             ny, dy, nz, dz = 1, 1.0, 1, 1.0
@@ -47,15 +75,15 @@ def _parse_grid_and_obs(args, kwargs):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def predict(variogram, nx, dx, *args, mean=0.0, **kwargs):
+def predict(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
-    sk = SimpleKriging(variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean=mean)
-    return sk.predict()
+    k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                       obs_locations, obs_values, obs_uncertainties, mean)
+    return k.predict()
 
 
-def simulate(variogram, nx, dx, *args, mean=0.0, n_sim=1, **kwargs):
+def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, n_sim=1, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
-    sk = SimpleKriging(variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean=mean)
-    return sk.simulate(n_sim=n_sim)
+    k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
+                       obs_locations, obs_values, obs_uncertainties, mean)
+    return k.simulate(n_sim=n_sim)

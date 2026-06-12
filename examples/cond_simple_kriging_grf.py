@@ -20,9 +20,9 @@ def main():
     variogram = grf.variogram('matern52', main_range=300, perp_range=100, azimuth=30)
 
     # Observation points
-    obs_pt = np.array([[250.0, 750.0], [755.0, 255.0]])
-    obs_val = np.array([2.5, -2.0])
-    obs_unc = np.array([0.00, 0.5])
+    obs_pt = np.array([[250.0, 750.0], [755.0, 255.0], [500.0, 500.0]])
+    obs_val = np.array([2.5, -2.0, 0.5])
+    obs_unc = np.array([0.0, 0.0, 0.0])
 
     # Unconditional + conditional realizations for the same setup.
     grf.seed(42)
@@ -43,10 +43,10 @@ def main():
     avg_cond = np.mean(cond_stack, axis=0)
 
     # Two prediction setups: mean=unconditional and mean=0.
-    pred_with_uncond, _variance_with_uncond = grf.predict(
+    pred_with_uncond, _std_with_uncond = grf.predict(
         variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d
     )
-    pred_zero_mean, variance_zero_mean = grf.predict(
+    pred_zero_mean, std_zero_mean = grf.predict(
         variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=0.0
     )
 
@@ -63,7 +63,7 @@ def main():
     line_y = p0[1] + s * (p1[1] - p0[1])
     arclen = np.hypot(p1[0] - p0[0], p1[1] - p0[1])
     dist = s * arclen
-    obs_proj_dist = np.array([200.0, 200.0 + obs_dist])
+    obs_proj_dist = np.array([np.dot(obs_pt[i] - p0, obs_direction_unit) for i in range(len(obs_pt))])
 
     # Plot: 2x3 maps + cross-section panel.
     fig = plt.figure(figsize=(14, 12))
@@ -82,9 +82,9 @@ def main():
     extent = [0, nx * dx, 0, ny * dy]
     map_fields = [
         (uncond_2d, 'Unconditional (42)'),
-        (cond_seed_42, 'Conditional (42)'),
-        (avg_cond, f'Mean of {n_realizations} cond sims'),
-        (cond_seed_123, 'Conditional (123)'),
+        (cond_seed_42, 'Conditional SK (42)'),
+        (avg_cond, f'Mean of {n_realizations} cond SK sims'),
+        (cond_seed_123, 'Conditional SK (123)'),
         (pred_with_uncond, 'Prediction (mean=uncond)'),
         (pred_zero_mean, 'Prediction (mean=0)'),
     ]
@@ -102,16 +102,16 @@ def main():
 
     # Cross-section panel (band shown for mean=0).
     pred_zero_cs = bilinear_interpolate(pred_zero_mean, line_x, line_y, dx, dy)
-    std_zero_cs = np.sqrt(bilinear_interpolate(variance_zero_mean, line_x, line_y, dx, dy))
+    std_zero_cs = bilinear_interpolate(std_zero_mean, line_x, line_y, dx, dy)
 
     ax_cs.fill_between(
         dist, pred_zero_cs - std_zero_cs, pred_zero_cs + std_zero_cs,
         alpha=0.2, color='C2', label='+-1 std dev (mean=0)'
     )
     ax_cs.plot(dist, bilinear_interpolate(uncond_2d, line_x, line_y, dx, dy), label='Unconditional (seed=42)', lw=1.2)
-    ax_cs.plot(dist, bilinear_interpolate(cond_seed_42, line_x, line_y, dx, dy), label='Conditional (seed=42)', lw=1.3)
-    ax_cs.plot(dist, bilinear_interpolate(cond_seed_123, line_x, line_y, dx, dy), label='Conditional (seed=123)', lw=1.3)
-    ax_cs.plot(dist, pred_zero_cs, label='Predict(mean=0)', lw=1.5, ls='--', color='C2')
+    ax_cs.plot(dist, bilinear_interpolate(cond_seed_42, line_x, line_y, dx, dy), label='Conditional SK (seed=42)', lw=1.3)
+    ax_cs.plot(dist, bilinear_interpolate(cond_seed_123, line_x, line_y, dx, dy), label='Conditional SK (seed=123)', lw=1.3)
+    ax_cs.plot(dist, pred_zero_cs, label='SK predict (mean=0)', lw=1.5, ls='--', color='C2')
 
     for i, sx in enumerate(obs_proj_dist):
         ax_cs.axvline(sx, color='k', lw=0.5, alpha=0.3)
