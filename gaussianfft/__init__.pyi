@@ -267,7 +267,7 @@ def conditional_simulate(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
@@ -285,7 +285,7 @@ def conditional_simulate(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
@@ -305,7 +305,7 @@ def conditional_simulate(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
@@ -359,7 +359,7 @@ def predict(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
 ) -> tuple[ndarray, ndarray]:...
 
@@ -375,7 +375,7 @@ def predict(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
 ) -> tuple[ndarray, ndarray]:...
 
@@ -393,7 +393,7 @@ def predict(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
 ) -> tuple[ndarray, ndarray]:
     """
