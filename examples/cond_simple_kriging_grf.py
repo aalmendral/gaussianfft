@@ -43,10 +43,10 @@ def main():
     avg_cond = np.mean(cond_stack, axis=0)
 
     # Two prediction setups: mean=unconditional and mean=0.
-    pred_with_uncond, _variance_with_uncond = grf.predict(
-        variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d.flatten(order='F')
+    pred_with_uncond, _std_with_uncond = grf.predict(
+        variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=uncond_2d
     )
-    pred_zero_mean, variance_zero_mean = grf.predict(
+    pred_zero_mean, std_zero_mean = grf.predict(
         variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc, mean=0.0
     )
 
@@ -102,7 +102,7 @@ def main():
 
     # Cross-section panel (band shown for mean=0).
     pred_zero_cs = bilinear_interpolate(pred_zero_mean, line_x, line_y, dx, dy)
-    std_zero_cs = np.sqrt(bilinear_interpolate(variance_zero_mean, line_x, line_y, dx, dy))
+    std_zero_cs = bilinear_interpolate(std_zero_mean, line_x, line_y, dx, dy)
 
     ax_cs.fill_between(
         dist, pred_zero_cs - std_zero_cs, pred_zero_cs + std_zero_cs,

@@ -6,7 +6,6 @@ if find_spec("numpy") is None:
 
 import gaussianfft._platform  # noqa: F401  (sets up DLL paths before loading C extension)
 
-import gaussianfft._platform  # noqa: F401  (sets up DLL paths before loading C extension)
 import _gaussianfft
 
 from _gaussianfft import *

@@ -195,6 +195,26 @@ class TestSimpleKriging2D:
         # Corner should have higher stdev
         assert stdev_field[0, 0] > stdev_field[ix, iy]
 
+    def test_conditional_simulation_with_array_mean(self):
+        grf.seed(123)
+        obs_locations = np.array([[25.0, 25.0], [50.0, 50.0]])
+        obs_values = np.array([1.5, -1.0])
+        obs_uncertainties = np.array([0.0, 0.0])
+        mean = np.zeros((self.nx, self.ny))
+
+        sims = grf.conditional_simulate(
+            self.variogram, self.nx, self.dx, self.ny, self.dy,
+            obs_locations, obs_values, obs_uncertainties,
+            mean=mean, n=1,
+        )
+
+        assert len(sims) == 1
+        assert sims[0].shape == (self.nx, self.ny)
+        for loc, val in zip(obs_locations, obs_values):
+            ix = int(round(loc[0] / self.dx))
+            iy = int(round(loc[1] / self.dy))
+            assert abs(sims[0][ix, iy] - val) < 1e-4
+
 
 class TestSimpleKriging3D:
     def setup_method(self):
@@ -257,6 +277,31 @@ class TestInputValidation:
 
         with pytest.raises(ValueError, match="outside grid bounds"):
             predict(self.variogram, 50, 5.0, obs_locations, obs_values, obs_uncertainties)
+
+    def test_array_mean_shape_mismatch(self):
+        obs_locations = np.array([[10.0]])
+        obs_values = np.array([1.0])
+        obs_uncertainties = np.array([0.0])
+        mean = np.zeros((2, 2))
+
+        with pytest.raises(ValueError, match="mean"):
+            predict(self.variogram, 50, 5.0, obs_locations, obs_values, obs_uncertainties, mean=mean)
+
+    def test_unexpected_keyword_argument(self):
+        obs_locations = np.array([[10.0]])
+        obs_values = np.array([1.0])
+        obs_uncertainties = np.array([0.0])
+
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            predict(self.variogram, 50, 5.0, obs_locations, obs_values, obs_uncertainties, typo=True)
+
+    def test_partial_keyword_grid_rejected(self):
+        obs_locations = np.array([[10.0]])
+        obs_values = np.array([1.0])
+        obs_uncertainties = np.array([0.0])
+
+        with pytest.raises(TypeError, match="ny must be provided"):
+            predict(self.variogram, 50, 5.0, obs_locations, obs_values, obs_uncertainties, dy=5.0)
 
     def test_wrong_ndims_in_locations(self):
         # 1D grid but 2D observation locations

@@ -1,3 +1,7 @@
+from typing import Union
+
+from numpy import ndarray
+
 from gaussianfft._kriging.kriging_toolkit import SimpleKriging, OrdinaryKriging
 
 __all__ = ['predict', 'simulate']
@@ -28,6 +32,9 @@ def _parse_grid_and_obs(args, kwargs):
     dy = kwargs.pop('dy', None)
     nz = kwargs.pop('nz', None)
     dz = kwargs.pop('dz', None)
+    if kwargs:
+        unexpected = next(iter(kwargs))
+        raise TypeError(f"unexpected keyword argument {unexpected!r}")
 
     if ny is not None:
         # Grid dims passed as keyword arguments; all positional args are obs
@@ -44,6 +51,8 @@ def _parse_grid_and_obs(args, kwargs):
             )
         obs_locations, obs_values, obs_uncertainties = args
     else:
+        if dy is not None or nz is not None or dz is not None:
+            raise TypeError("ny must be provided when dy, nz, or dz are given as keyword arguments")
         # All positional
         if len(args) == 3:
             ny, dy, nz, dz = 1, 1.0, 1, 1.0
@@ -66,14 +75,14 @@ def _parse_grid_and_obs(args, kwargs):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def predict(variogram, nx, dx, *args, method='SimpleKriging', mean=0.0, **kwargs):
+def predict(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
     k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
                        obs_locations, obs_values, obs_uncertainties, mean)
     return k.predict()
 
 
-def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean=0.0, n_sim=1, **kwargs):
+def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, n_sim=1, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
     k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
                        obs_locations, obs_values, obs_uncertainties, mean)

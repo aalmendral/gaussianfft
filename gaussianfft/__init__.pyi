@@ -329,8 +329,9 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
-    Prior mean of the field. Default is 0.0.
+mean: float or ndarray, optional
+    Prior mean of the field. If an array is provided, it must match the grid shape.
+    Default is 0.0.
 n: int, optional
     Number of realizations to generate. Default is 1.
 seed: int, optional
@@ -413,8 +414,9 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
-    Prior mean of the field (SimpleKriging only). Default is 0.0.
+mean: float or ndarray, optional
+    Prior mean of the field (SimpleKriging only). If an array is provided, it must
+    match the grid shape. Default is 0.0.
 method: str, optional
     Kriging method. One of 'SimpleKriging' (default) or 'OrdinaryKriging'.
 
