@@ -392,7 +392,7 @@ class TestMethodDispatch:
         self.variogram = grf.variogram('exponential', 100.0)
         self.nx, self.dx = 20, 5.0
         self.obs_locations = np.array([[25.0], [75.0]])
-        self.obs_values = np.array([1.0, -1.0])
+        self.obs_values = np.array([1.0, 3.0])   # non-zero mean → SK(mean=0) ≠ OK
         self.obs_uncertainties = np.array([0.0, 0.0])
 
     def _args(self):
