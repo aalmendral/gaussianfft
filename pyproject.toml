@@ -65,6 +65,7 @@ notebooks = [
     "marimo>=0.17.6",
     "matplotlib",
     "scipy",
+    "xtgeo",
 ]
 test = [
     "pytest",
