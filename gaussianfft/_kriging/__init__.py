@@ -22,9 +22,11 @@ def _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
     if method == 'SimpleKriging':
         return cls(variogram, nx, dx, ny, dy, nz, dz,
                    obs_locations, obs_values, obs_uncertainties, mean=mean)
-    return cls(variogram, nx, dx, ny, dy, nz, dz,
-               obs_locations, obs_values, obs_uncertainties)
-
+    elif method == 'OrdinaryKriging':
+        return cls(variogram, nx, dx, ny, dy, nz, dz,
+                   obs_locations, obs_values, obs_uncertainties)
+    else:
+        raise ValueError(f"Unsupported kriging method: {method!r}")
 
 def _parse_grid_and_obs(args, kwargs):
     """Parse positional/keyword args: [ny, dy, [nz, dz,]] obs_locations, obs_values, obs_uncertainties."""

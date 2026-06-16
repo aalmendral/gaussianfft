@@ -3,6 +3,7 @@ import pytest
 
 import gaussianfft as grf
 from gaussianfft._kriging import predict
+from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
 
 
 # ---------------------------------------------------------------------------
@@ -402,6 +403,38 @@ class TestOrdinaryKriging1D:
             idx1 = int(round(150.0 / self.dx))
             assert abs(sim[idx0] - 1.0) < 1e-4
             assert abs(sim[idx1] - (-0.5)) < 1e-4
+
+    def test_estimated_mean_constant_observations(self):
+        # When all obs values are the same constant, estimated_mean should equal it
+        obs_locations = np.array([[50.0], [100.0], [150.0]])
+        obs_values = np.full(3, 4.0)
+        obs_uncertainties = np.zeros(3)
+
+        ok = OrdinaryKriging(
+            self.variogram, self.nx, self.dx, 1, 1.0, 1, 1.0,
+            obs_locations, obs_values, obs_uncertainties,
+        )
+
+        assert abs(ok.estimated_mean - 4.0) < 1e-6
+
+    def test_estimated_mean_positive_for_positive_obs(self):
+        # Single positive observation far from grid edges:
+        # estimated_mean should be positive and the far-field mean should
+        # have the same sign (catches the lagrange sign-flip bug).
+        obs_locations = np.array([[120.0]])
+        obs_values = np.array([5.0])
+        obs_uncertainties = np.array([0.0])
+
+        ok = OrdinaryKriging(
+            self.variogram, self.nx, self.dx, 1, 1.0, 1, 1.0,
+            obs_locations, obs_values, obs_uncertainties,
+        )
+        mean_field, _ = ok.predict()
+
+        assert ok.estimated_mean > 0.0
+        # Far-field should revert toward the estimated mean, not flip sign
+        assert mean_field[0] > 0.0
+        assert mean_field[-1] > 0.0
 
 
 class TestOrdinaryKriging2D:

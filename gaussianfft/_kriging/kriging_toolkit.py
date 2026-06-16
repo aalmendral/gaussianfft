@@ -187,10 +187,14 @@ class OrdinaryKriging:
     """Ordinary Kriging: estimates an unknown constant mean from the data.
 
     The unbiasedness constraint (weights sum to 1) is enforced via a Lagrange
-    multiplier, giving the augmented system::
+    multiplier.  Weights and multiplier are computed via the Schur complement
+    of C in the augmented system, using only the Cholesky factor of C::
 
-        [C  1] [w ]   [k]
-        [1  0] [mu] = [1]
+        alpha  = C^{-1} 1                          (n_obs,)
+        s      = 1^T alpha                          scalar
+        beta   = C^{-1} K^T                         (n_obs, n_grid)
+        mu(x)  = (1 - 1^T beta(x)) / s             (n_grid,)
+        w(x)   = beta(x) - alpha * mu(x)            (n_obs, n_grid)
 
     Kriging mean:     z*(x) = w(x)^T z_obs
     Kriging variance: sigma^2(x) = C(0) - k(x)^T w(x) - mu(x)
@@ -215,10 +219,8 @@ class OrdinaryKriging:
                          nx, dx, ny, dy, nz, dz, self.ndims)
 
         cov = _build_obs_cov_matrix(variogram, self.obs_locations, self.obs_uncertainties, self.ndims)
-        ones = np.ones((n_obs, 1))
-        cov_aug = np.block([[cov, ones], [ones.T, np.zeros((1, 1))]])
         try:
-            self._lu_factor = scipy.linalg.lu_factor(cov_aug)
+            cho = scipy.linalg.cho_factor(cov)
         except scipy.linalg.LinAlgError as exc:
             raise ValueError(_FACTORIZE_ERROR) from exc
 
@@ -227,12 +229,19 @@ class OrdinaryKriging:
         )
         self._obs_coords = _obs_interp_coords(self.obs_locations, dx, dy, dz, self.ndims)
 
-        # Solve augmented OK system for all grid points at once
-        n_grid = self._grid_to_obs_cov.shape[0]
-        rhs = np.vstack([self._grid_to_obs_cov.T, np.ones((1, n_grid))])
-        sol = scipy.linalg.lu_solve(self._lu_factor, rhs)
-        self._weights = sol[:n_obs]       # (n_obs, n_grid)
-        self._lagrange = sol[n_obs]       # (n_grid,)
+        # Schur complement: solve for weights and Lagrange multipliers without
+        # forming the indefinite augmented matrix.
+        ones = np.ones(n_obs)
+        alpha = scipy.linalg.cho_solve(cho, ones)                    # (n_obs,)
+        s = ones @ alpha                                              # scalar: 1^T C^{-1} 1
+        beta = scipy.linalg.cho_solve(cho, self._grid_to_obs_cov.T)  # (n_obs, n_grid)
+        lagrange = (ones @ beta - 1.0) / s                           # (n_grid,)
+        self._weights = beta - np.outer(alpha, lagrange)             # (n_obs, n_grid)
+        self._lagrange = lagrange                                     # (n_grid,)
+
+        # BLUE estimate of the unknown constant mean: mu_hat = (1^T C^{-1} z) / (1^T C^{-1} 1)
+        gamma = scipy.linalg.cho_solve(cho, self.obs_values)         # C^{-1} z_obs
+        self.estimated_mean: float = float(ones @ gamma / s)
 
     def predict(self):
         kriging_mean = (self._weights.T @ self.obs_values).reshape(self._grid_shape)
