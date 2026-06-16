@@ -193,7 +193,7 @@ class OrdinaryKriging:
         alpha  = C^{-1} 1                          (n_obs,)
         s      = 1^T alpha                          scalar
         beta   = C^{-1} K^T                         (n_obs, n_grid)
-        mu(x)  = (1 - 1^T beta(x)) / s             (n_grid,)
+        mu(x)  = (1^T beta(x) - 1) / s             (n_grid,)  [drift coefficient]
         w(x)   = beta(x) - alpha * mu(x)            (n_obs, n_grid)
 
     Kriging mean:     z*(x) = w(x)^T z_obs
@@ -229,15 +229,14 @@ class OrdinaryKriging:
         )
         self._obs_coords = _obs_interp_coords(self.obs_locations, dx, dy, dz, self.ndims)
 
-        # Schur complement: solve for weights and Lagrange multipliers without
-        # forming the indefinite augmented matrix.
+        # Schur complement: solve for weights and drift coefficient
         ones = np.ones(n_obs)
         alpha = scipy.linalg.cho_solve(cho, ones)                    # (n_obs,)
         s = ones @ alpha                                              # scalar: 1^T C^{-1} 1
         beta = scipy.linalg.cho_solve(cho, self._grid_to_obs_cov.T)  # (n_obs, n_grid)
-        lagrange = (ones @ beta - 1.0) / s                           # (n_grid,)
-        self._weights = beta - np.outer(alpha, lagrange)             # (n_obs, n_grid)
-        self._lagrange = lagrange                                     # (n_grid,)
+        drift_coefficient = (ones @ beta - 1.0) / s                  # (n_grid,)
+        self._weights = beta - np.outer(alpha, drift_coefficient)    # (n_obs, n_grid)
+        self._drift_coefficient = drift_coefficient                  # (n_grid,)
 
         # BLUE estimate of the unknown constant mean: mu_hat = (1^T C^{-1} z) / (1^T C^{-1} 1)
         gamma = scipy.linalg.cho_solve(cho, self.obs_values)         # C^{-1} z_obs
@@ -247,7 +246,7 @@ class OrdinaryKriging:
         kriging_mean = (self._weights.T @ self.obs_values).reshape(self._grid_shape)
 
         kTw = np.sum(self._grid_to_obs_cov * self._weights.T, axis=1)
-        kriging_variance = 1.0 - kTw - self._lagrange
+        kriging_variance = 1.0 - kTw - self._drift_coefficient
         kriging_stdev = np.sqrt(np.maximum(kriging_variance, 0.0)).reshape(self._grid_shape)
 
         return kriging_mean, kriging_stdev

@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import map_coordinates
 import gaussianfft as grf
+from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
 
 
 def _interp(field, xs, ys, dx, dy):
@@ -25,10 +26,9 @@ def main():
     obs_unc = np.array([0.0, 0.0, 0.0])
 
     # Ordinary kriging prediction
-    pred_mean, pred_std = grf.predict(
-        variogram, nx, dx, ny, dy, obs_pt, obs_val, obs_unc,
-        method='OrdinaryKriging',
-    )
+    ok = OrdinaryKriging(variogram, nx, dx, ny, dy, 1, 1.0, obs_pt, obs_val, obs_unc)
+    pred_mean, pred_std = ok.predict()
+    estimated_mean = ok.estimated_mean
 
     # Two conditional simulations
     sim_a = grf.conditional_simulate(
@@ -95,6 +95,8 @@ def main():
     ax_cs.fill_between(dist, cs_mean - cs_std, cs_mean + cs_std,
                         alpha=0.25, color='C0', label='Mean ± std dev')
     ax_cs.plot(dist, cs_mean, color='C0', lw=1.8, label='OK mean')
+    ax_cs.axhline(estimated_mean, color='k', lw=1.2, ls='--',
+                  label=f'Estimated mean ({estimated_mean:.2f})')
     ax_cs.plot(dist, cs_a,    color='C1', lw=1.2, label='Cond. sim (seed=42)')
     ax_cs.plot(dist, cs_b,    color='C2', lw=1.2, label='Cond. sim (seed=123)')
 
