@@ -96,8 +96,8 @@ def main():
         for i, v in enumerate(obs_val):
             ax.annotate(f'{v:.1f}', obs_pt[i], textcoords='offset points', xytext=(4, 4))
         ax.set_title(title)
-        ax.set_xticks([])
-        ax.set_yticks([])
+        ax.set_xlabel('x (m)')
+        ax.set_ylabel('y (m)')
         fig.colorbar(im, ax=ax)
 
     # Cross-section panel (band shown for mean=0).
